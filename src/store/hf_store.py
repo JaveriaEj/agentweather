@@ -35,6 +35,18 @@ log = get_logger(__name__)
 FG_ROOT = "fg"
 
 
+def normalize_repo_id(value: str) -> str:
+    """Accept 'user/name', a full https://huggingface.co/... link, or values with stray spaces."""
+    v = value.strip().strip('"').strip("'").strip()
+    for prefix in ("https://huggingface.co/", "http://huggingface.co/", "huggingface.co/"):
+        if v.startswith(prefix):
+            v = v[len(prefix):]
+    for kind in ("datasets/", "models/"):
+        if v.startswith(kind):
+            v = v[len(kind):]
+    return v.strip("/")
+
+
 def _month(ts: int) -> str:
     return pd.Timestamp(int(ts), unit="s", tz="UTC").strftime("%Y-%m")
 
@@ -59,8 +71,9 @@ class HuggingFaceStore(BaseStore):
         self.hub = hub
         self.token = token or env("HF_TOKEN", required=True)
         self.api = api or hub.HfApi(token=self.token)
-        self.dataset_repo = dataset_repo or env("HF_DATASET_REPO", required=True)
-        self.model_repo = model_repo or env("HF_MODEL_REPO", required=True)
+        self.dataset_repo = normalize_repo_id(dataset_repo or env("HF_DATASET_REPO", required=True))
+        self.model_repo = normalize_repo_id(model_repo or env("HF_MODEL_REPO", required=True))
+        log.info("Hugging Face repos: dataset=%s model=%s", self.dataset_repo, self.model_repo)
         for repo, kind in [(self.dataset_repo, "dataset"), (self.model_repo, "model")]:
             self.api.create_repo(repo_id=repo, repo_type=kind, private=True, exist_ok=True)
         self._pending: dict[tuple[str, str], list[pd.DataFrame]] = defaultdict(list)

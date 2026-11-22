@@ -42,6 +42,9 @@ def env(name: str, default: str | None = None, required: bool = False) -> str | 
             val = st.secrets.get(name)  # type: ignore[attr-defined]
         except Exception:  # noqa: BLE001
             val = None
+    if isinstance(val, str):
+        # tolerate copy/paste accidents: spaces, line breaks, surrounding quotes
+        val = val.strip().strip('"').strip("'").strip()
     if val in (None, ""):
         val = default
     if required and not val:

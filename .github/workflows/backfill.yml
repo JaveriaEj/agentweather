@@ -20,9 +20,10 @@ jobs:
     env:
       OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
       AQICN_TOKEN: ${{ secrets.AQICN_TOKEN }}
-      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-      HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
-      STORE_BACKEND: hopsworks
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_DATASET_REPO: ${{ secrets.HF_DATASET_REPO }}
+      HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
+      STORE_BACKEND: huggingface
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -60,3 +60,18 @@ def test_parse_aqicn_feed_handles_missing_values():
     assert r["aqi_aqicn"] is None and r["aqicn_pm25_index"] == 120.0 and r["ts"] % 3600 == 0
     with pytest.raises(ApiError):
         parse_feed({"status": "error", "data": "Invalid key"})
+
+
+def test_parse_open_meteo_hourly():
+    from src.ingestion.openmeteo import parse_hourly
+
+    payload = {"hourly": {"time": [1700000000 - 3600, 1700000000, 1700003600],
+                          "temperature_2m": [20.0, 21.5, None], "relative_humidity_2m": [60, 62, None],
+                          "dew_point_2m": [12, 13, None], "pressure_msl": [1010, 1011, None],
+                          "cloud_cover": [10, 20, None], "precipitation": [0.0, 1.2, None],
+                          "uv_index": [0.0, 4.5, None], "wind_speed_10m": [3.0, 4.0, None],
+                          "wind_direction_10m": [200, 210, None]}}
+    rows = parse_hourly(payload, 1700000000 - 3600, 1700003600)
+    assert len(rows) == 2                                  # the hour without data is skipped
+    assert rows[1]["temp_c"] == 21.5 and rows[1]["uvi"] == 4.5 and rows[1]["precip_mm"] == 1.2
+    assert all(r["ts"] % 3600 == 0 for r in rows)

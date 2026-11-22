@@ -42,7 +42,7 @@ OpenWeather ─┐   AQICN ─┐
 GitHub Action (hourly) ── scripts/run_feature_pipeline.py
   fetch (retry/backoff/fallback) → validate → fuse 1 row/hour → impute → features/targets
              ▼
-HOPSWORKS  Feature Store (raw, features, targets, forecasts, ledger, logs, drift)
+HUGGING FACE HUB  Feature store = private dataset repo (raw, features, targets, forecasts, ledger, logs, drift)
            Model Registry (versioned "bundle": best model per variable)
      ▲            │                         │
      │            ▼                         ▼
@@ -70,7 +70,7 @@ START → load_context → forecast_agent → alert_agent
 ```
 
 * **Shared state within a run:** `ForecastState` (`src/agents/state.py`).
-* **Shared state between runs:** the **Forecast Ledger** and logs in Hopsworks. `load_context`
+* **Shared state between runs:** the **Forecast Ledger** and logs in the feature store (Hugging Face dataset repo). `load_context`
   reads recent alerts (de-duplication), the last report time (daily schedule) and the last
   retraining trigger (12 h cooldown).
 
@@ -102,7 +102,7 @@ reports/eda/       generated EDA charts + findings
 |---|---|---|
 | OpenWeather | live weather, weather history, air pollution | Sign up → subscribe to **One Call by Call** (card required, 1,000 calls/day free). **Set the daily limit to 1,000** in *Billing plans* so you are never charged. |
 | AQICN | live station AQI | https://aqicn.org/data-platform/token |
-| Hopsworks | Feature Store + Model Registry | https://app.hopsworks.ai → create a project → *Account settings → API keys* |
+| Hugging Face | Feature store (dataset repo) + Model Registry (model repo) | https://huggingface.co/join → *Settings → Access Tokens* → new token with **Write** permission. The two private repos are created automatically on the first run. |
 | Groq | LLM for alerts/reports | https://console.groq.com → API keys |
 | GitHub | code + Actions | **public** repo (unlimited free Actions minutes) |
 | Streamlit Community Cloud | dashboard | sign in with GitHub |
@@ -133,14 +133,14 @@ streamlit run dashboard/app.py                          # dashboard on http://lo
 > Training needs at least 3 weeks of complete history (it stops with a clear message otherwise).
 > 180 days of weather history = 4,320 time-machine calls ≈ 5 days at 900 calls/day.
 
-`STORE_BACKEND=local` stores everything in `data/local_store/` instead of Hopsworks (for development
+`STORE_BACKEND=local` stores everything in `data/local_store/` instead of Hugging Face (for development
 and the tests only).
 
 ## 5. GitHub Actions
 
 1. Push the repo to GitHub (public).
 2. *Settings → Secrets and variables → Actions → New repository secret*:
-   `OPENWEATHER_API_KEY`, `AQICN_TOKEN`, `HOPSWORKS_API_KEY`, `HOPSWORKS_PROJECT`, `GROQ_API_KEY`.
+   `OPENWEATHER_API_KEY`, `AQICN_TOKEN`, `GROQ_API_KEY`, `HF_TOKEN`, `HF_DATASET_REPO`, `HF_MODEL_REPO`.
    Optional *variable* `GROQ_MODEL` to change the LLM.
 3. *Actions* tab → enable workflows → run **Historical Backfill** manually (once per day until complete),
    then **Model Training** manually once.
@@ -159,7 +159,7 @@ without repository activity — the gap-repair step re-fetches missed hours.
 1. https://share.streamlit.io → *Create app* → choose the repo, branch `main`, main file `dashboard/app.py`.
 2. *Advanced settings*: Python 3.11; *Secrets*: paste the contents of `.streamlit/secrets.toml.example`
    with your values.
-3. Deploy. The app reads only from Hopsworks (cached 10 minutes). Free apps sleep after inactivity and wake on visit.
+3. Deploy. The app reads only from the Hugging Face repos (cached 10 minutes). Free apps sleep after inactivity and wake on visit.
 
 ## 7. Design decisions (documentation)
 
@@ -219,7 +219,17 @@ sensitive groups and outdoor workers; its JSON output is validated, otherwise fi
 * Model drift: live RMSE of ledger forecasts vs observations ÷ validation RMSE (threshold 1.5).
 * Weather is seasonal, so data drift will fire when the season changes — that is intended: it retrains on newer data.
 
-### Logs (all in Hopsworks)
+### Storage: Hugging Face Hub instead of Hopsworks
+The brief suggests Hopsworks' free tier, but our Hopsworks account was not allowed to create a project
+("Project limit reached"). The storage layer is abstracted (`src/store/`), so the same code runs on:
+* **Hugging Face Hub (used):** feature groups are monthly Parquet files in a private dataset repo
+  (`fg/<group>/<YYYY-MM>.parquet`); the model registry is a private model repo with one folder per
+  version (`v<N>/`). Writes are buffered and saved in one commit per pipeline run; if two workflows
+  commit at once, the store re-reads, merges and retries, so no rows are lost.
+* **Hopsworks:** `src/store/hopsworks_store.py` (set `STORE_BACKEND=hopsworks`) if access is granted later.
+* **Local files:** development and tests only.
+
+### Logs (all in the feature store)
 `forecast_ledger`, `agent_runs`, `llm_calls`, `llm_failures`, `api_failures`, `pipeline_runs`,
 `drift_log`, `model_eval_history`, `alerts`, `weather_reports`, `shap_importance`.
 
@@ -231,11 +241,11 @@ sensitive groups and outdoor workers; its JSON output is validated, otherwise fi
 | Baseline, Ridge, Random Forest, rain classifier, selection, registry logic (local store) | ✅ automated tests |
 | Forecast/Alert/Report/Drift agents, ledger, cooldown, LLM fallback (sequential runner) | ✅ automated tests |
 | SARIMAX, LSTM, LangGraph graph, SHAP | ⚠️ code complete; run `pytest` after `pip install -r requirements.txt` (the LangGraph test runs automatically when it is installed) |
-| Real APIs, Hopsworks, Groq, GitHub dispatch, Streamlit Cloud | ⚠️ needs your keys — verify with the first-run checklist below |
+| Real APIs, Hugging Face Hub, Groq, GitHub dispatch, Streamlit Cloud | ⚠️ needs your keys — verify with the first-run checklist below |
 
 ### First-run checklist
 1. `pytest -q` → all tests pass (including `test_langgraph_graph_runs`).
-2. `python -m scripts.run_feature_pipeline` → log shows `Feature pipeline success`; Hopsworks UI shows `raw_weather`, `hourly_features`.
+2. `python -m scripts.run_feature_pipeline` → log shows `Feature pipeline success`; your Hugging Face dataset repo shows `fg/raw_weather/…`, `fg/hourly_features/…`.
 3. Backfill complete → `python -m scripts.run_training` logs the RMSE table for all 5 model types and `Registered weather_aqi_bundle v1`.
 4. `python -m scripts.run_agents` → `Run summary` with `forecast_status: success`.
 5. Dashboard shows real values in every tab.

@@ -14,7 +14,7 @@ reports and self-monitoring.
 
 ## 2. Architecture
 See README §1. Components: GitHub Actions (hourly ingestion, agents after ingestion, daily training,
-drift-triggered retraining), Hopsworks (Feature Store and Model Registry), LangGraph (four agents), Groq (LLM),
+drift-triggered retraining), Hugging Face Hub (feature store as a private dataset repo, Model Registry as a private model repo; Hopsworks backend also implemented), LangGraph (four agents), Groq (LLM),
 Streamlit Community Cloud (dashboard).
 
 ## 3. Data sources
@@ -84,10 +84,12 @@ the system behaved (retries, fallbacks).
 | Re-training produced "better" models by floating-point noise, creating needless versions | Candidate must beat production by > 0.5 % RMSE |
 | scikit-learn permutation importance rejected a plain adapter object (new estimator-tags API) | Own permutation-importance fallback; SHAP is the primary method |
 | Hopsworks fixes schemas at first insert; some column names (`window`, `trigger`, `rank`) are SQL keywords | Consistent type casting (`conform`), schema alignment before insert, renamed columns |
-| GitHub Actions runners keep no state | Forecast Ledger and logs persisted in Hopsworks and loaded at the start of each run |
+| GitHub Actions runners keep no state | Forecast Ledger and logs persisted in the feature store and loaded at the start of each run |
+| Hopsworks account could not create a project ("Project limit reached") | Pluggable storage layer; Hugging Face Hub backend (Parquet feature groups + versioned model repo) |
+| Two workflows writing at the same time could overwrite each other | One buffered commit per run with optimistic concurrency (`parent_commit`) and automatic re-merge/retry |
 | Retraining loops on persistent drift | 12-hour cooldown read from the drift log |
 | **[FILL]** issues you hit during deployment | |
 
 ## 15. Limitations and future work
 Single city; history length limited by the API budget; OpenWeather pollutant values are modelled rather than
-measured at stations; GitHub cron delays; free Hopsworks tier quotas.
+measured at stations; GitHub cron delays; Hugging Face Hub storage/commit quotas.

@@ -12,8 +12,22 @@ from src.store.local_store import LocalStore  # noqa: E402
 from tests.synthetic import make_raw  # noqa: E402
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _fast_settings():
+    """Smaller models so the test suite runs in a few minutes on a laptop.
+    (Production settings in config/settings.yaml are unchanged.)"""
+    from src.utils.config import settings
+
+    t = settings()["training"]
+    old = (t["rf_n_estimators"], t["rf_max_depth"], t["lstm"]["epochs"])
+    t["rf_n_estimators"], t["rf_max_depth"], t["lstm"]["epochs"] = 20, 8, 3
+    yield
+    t["rf_n_estimators"], t["rf_max_depth"], t["lstm"]["epochs"] = old
+
+
 @pytest.fixture(autouse=True)
 def _offline_env(monkeypatch):
+    monkeypatch.setenv("EXPLAIN_METHOD", "permutation")  # SHAP is slow; tested via the fallback path
     for k in ["GROQ_API_KEY", "GITHUB_TOKEN", "GH_DISPATCH_TOKEN", "GITHUB_REPOSITORY",
               "HOPSWORKS_API_KEY", "OPENWEATHER_API_KEY", "AQICN_TOKEN"]:
         monkeypatch.delenv(k, raising=False)

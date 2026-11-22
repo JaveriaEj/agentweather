@@ -47,3 +47,17 @@ def test_bundle_forecast_has_all_six_metric_groups(filled_store):
     assert fc[OUTPUT_COLUMNS].notna().all().all()
     assert (fc["rain_prob_pct"].between(0, 100)).all() and (fc["humidity_pct"].between(0, 100)).all()
     assert (fc["wind_dir_deg"].between(0, 360)).all() and (fc["uvi"] >= 0).all()
+
+
+def test_production_trained_on_validation_hours_is_not_champion(filled_store):
+    import json
+
+    run_training(filled_store, families={"classical"})
+    path, _ = filled_store.latest_model("weather_aqi_bundle")
+    meta = json.loads((path / "bundle.json").read_text())
+    for comp in meta["components"].values():         # pretend it saw the whole validation period
+        comp["train_end"] = 4_000_000_000
+    (path / "bundle.json").write_text(json.dumps(meta))
+    out = run_training(filled_store, families={"classical"})
+    assert out["decision"] == "registered_new_version"            # unfair champion is ignored
+    assert all("(new)" in v for v in out["selected"].values())

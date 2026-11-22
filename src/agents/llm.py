@@ -32,6 +32,9 @@ class LLMClient:
             return None
         payload = {"model": self.model, "temperature": self.cfg["temperature"], "max_tokens": max_tokens,
                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        if "gpt-oss" in self.model:  # reasoning model: keep thinking short, leave room for the answer
+            payload["reasoning_effort"] = "low"
+            payload["max_tokens"] = max_tokens + 1000
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         err = ""
         for attempt in range(1, self.cfg["max_retries"] + 2):

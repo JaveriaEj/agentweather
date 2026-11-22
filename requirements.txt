@@ -14,5 +14,8 @@ python-dotenv>=1.0
 langgraph>=0.2
 shap>=0.45
 matplotlib>=3.8
-hopsworks[python]>=4.2
+huggingface_hub>=0.24
+pyarrow>=15
+# Optional, only if you use Hopsworks instead (STORE_BACKEND=hopsworks):
+# hopsworks[python]>=4.2
 # After your first successful run, lock exact versions with:  pip freeze > requirements.lock

@@ -9,6 +9,11 @@ city:
   lon: 67.0011
   timezone: Asia/Karachi
 
+data_sources:
+  # Weather for history AND live data. "openmeteo" = free, no key (default).
+  # "openweather" = One Call 3.0 (needs the "One Call by Call" subscription).
+  weather: openmeteo
+
 forecast:
   horizon_hours: 24          # predict t+1 ... t+24
   # Variables the models predict. Wind is predicted as u/v components
@@ -67,7 +72,7 @@ report:
 llm:
   provider: groq
   base_url: https://api.groq.com/openai/v1/chat/completions
-  model: llama-3.3-70b-versatile   # override with GROQ_MODEL env var
+  model: openai/gpt-oss-20b   # override with GROQ_MODEL env var (Groq retires models - check console.groq.com/docs/models)
   timeout_s: 30
   max_retries: 2
   temperature: 0.3
@@ -76,8 +81,3 @@ api:
   timeout_s: 20
   max_retries: 4
   backoff_base_s: 2
-
-  data_sources:
-  # Weather for history AND live data. "openmeteo" = free, no key (default).
-  # "openweather" = One Call 3.0 (needs the "One Call by Call" subscription).
-  weather: openmeteo

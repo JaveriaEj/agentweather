@@ -30,9 +30,11 @@ def explain_sklearn(model, frame: pd.DataFrame, bg_idx, ex_idx, horizons=(0, 23)
         model.pipe.set_params(model__n_jobs=1)
     except ValueError:
         pass
+    import os
+
     try:
         import shap  # noqa: F401
-        have_shap = True
+        have_shap = os.getenv("EXPLAIN_METHOD", "shap") != "permutation"
     except ImportError:
         have_shap = False
 

@@ -71,7 +71,7 @@ def aqi_cat(v):
 # ------------------------------------------------------------------ header
 st.title(f"🌤️ AgentWeather — {CFG['city']['name']}")
 st.caption("Your 24-hour weather & air-quality report, written by forecasting models and LangGraph agents. "
-           "Every value is read live from the Hopsworks Feature Store; nothing is hardcoded.")
+           "Every value is read live from the project's feature store; nothing is hardcoded.")
 
 tabs = st.tabs(["📰 Weather Report", "24-h Forecast", "Agent Activity", "EDA", "Model Performance",
                 "Explainability", "Drift & Failures", "System Logs"])

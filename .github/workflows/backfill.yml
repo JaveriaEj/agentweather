@@ -1,0 +1,33 @@
+# Historical backfill. Run manually once a day until the log says "remaining: 0".
+name: Historical Backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        default: "180"
+      max_calls:
+        description: "One Call time-machine calls (free tier: 1000/day incl. the ~30 used by the hourly job)"
+        default: "900"
+  # Uncomment to repeat automatically every day until complete:
+  # schedule:
+  #   - cron: "40 19 * * *"
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      OPENWEATHER_API_KEY: ${{ secrets.OPENWEATHER_API_KEY }}
+      AQICN_TOKEN: ${{ secrets.AQICN_TOKEN }}
+      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+      HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+      STORE_BACKEND: hopsworks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-pipeline.txt
+      - run: python -m scripts.backfill --days "${{ github.event.inputs.days || '180' }}" --max-calls "${{ github.event.inputs.max_calls || '900' }}"

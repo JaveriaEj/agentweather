@@ -1,0 +1,38 @@
+# SCRIPT 3 - forecasting + LangGraph agents. Starts after every SUCCESSFUL feature-pipeline run.
+name: Forecast Agents
+
+on:
+  workflow_run:
+    workflows: ["Feature Pipeline"]
+    types: [completed]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write     # lets the Drift Agent dispatch train.yml
+  issues: write      # lets the Drift Agent open a "drift" issue to alert the team
+
+concurrency:
+  group: agents
+  cancel-in-progress: false
+
+jobs:
+  agents:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+      HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      STORE_BACKEND: hopsworks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m scripts.run_agents

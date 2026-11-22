@@ -1,0 +1,41 @@
+# SCRIPT 2 - daily training + on-demand retraining requested by the Drift Agent
+name: Model Training
+
+on:
+  schedule:
+    - cron: "17 21 * * *"     # 02:17 Pakistan time, daily
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "scheduled | drift | manual"
+        default: manual
+        required: false
+      drift_event_id:
+        description: "drift event that requested this run"
+        default: ""
+        required: false
+
+concurrency:
+  group: training
+  cancel-in-progress: false
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+      HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+      STORE_BACKEND: hopsworks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Train, evaluate, register
+        run: |
+          REASON="${{ github.event.inputs.reason }}"
+          python -m scripts.run_training --reason "${REASON:-scheduled}" \
+                 --drift-event-id "${{ github.event.inputs.drift_event_id }}"

@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------
+# Deterministic hazard rules used by the Alert Agent.
+# The LLM NEVER changes these. It only rewrites the resulting alerts
+# in plain language.
+#
+# Each rule fires when the forecast value is >= `min` (or <= `max`).
+# The highest firing level per metric wins.
+# Sources: US EPA AQI categories; WHO UV Index guide;
+# AMS rainfall-rate definitions; Beaufort scale; NOAA heat index.
+# ---------------------------------------------------------------
+levels_order: [advisory, warning, danger, emergency]
+
+rules:
+  aqi:
+    - {min: 101, level: advisory,  label: "Unhealthy for Sensitive Groups", audiences: [sensitive]}
+    - {min: 151, level: warning,   label: "Unhealthy",                      audiences: [public, sensitive, outdoor]}
+    - {min: 201, level: danger,    label: "Very Unhealthy",                 audiences: [public, sensitive, outdoor]}
+    - {min: 301, level: emergency, label: "Hazardous",                      audiences: [public, sensitive, outdoor]}
+  heat_index_c:
+    - {min: 32, level: advisory,  label: "Extreme caution (heat)", audiences: [outdoor, sensitive]}
+    - {min: 41, level: danger,    label: "Dangerous heat",         audiences: [public, sensitive, outdoor]}
+    - {min: 54, level: emergency, label: "Extreme danger (heat)",  audiences: [public, sensitive, outdoor]}
+  temp_c:
+    - {min: 40, level: warning,   label: "Very high temperature",  audiences: [public, sensitive, outdoor]}
+    - {max: 5,  level: advisory,  label: "Cold conditions",        audiences: [sensitive, outdoor]}
+  precip_mm:
+    - {min: 2.5,  level: advisory,  label: "Moderate rain",  audiences: [public, outdoor]}
+    - {min: 7.6,  level: warning,   label: "Heavy rain",     audiences: [public, sensitive, outdoor]}
+    - {min: 50,   level: emergency, label: "Violent rain / flooding risk", audiences: [public, sensitive, outdoor]}
+  uvi:
+    - {min: 6,  level: advisory, label: "High UV",       audiences: [outdoor, sensitive]}
+    - {min: 8,  level: warning,  label: "Very high UV",  audiences: [public, sensitive, outdoor]}
+    - {min: 11, level: danger,   label: "Extreme UV",    audiences: [public, sensitive, outdoor]}
+  wind_speed:   # metres per second
+    - {min: 10.8, level: advisory,  label: "Strong wind",  audiences: [outdoor]}
+    - {min: 17.2, level: warning,   label: "Gale",         audiences: [public, sensitive, outdoor]}
+    - {min: 24.5, level: emergency, label: "Storm",        audiences: [public, sensitive, outdoor]}
+  humidity_pct:
+    - {max: 15, level: advisory, label: "Very dry air", audiences: [sensitive]}
+
+# A NEW alert at any of these levels triggers an extra weather report
+# (project brief: "the Weather Report Agent runs daily and after a new alert").
+# Remove "advisory" here if minor alerts create too many reports.
+significant_levels: [advisory, warning, danger, emergency]
+# The same metric+level is not re-announced as "new" within this many hours.
+dedup_hours: 12
+
+advice:
+  public:    "Limit time outdoors during the affected hours and follow official guidance."
+  sensitive: "Children, older adults and people with heart or lung conditions should stay indoors and keep medication at hand."
+  outdoor:   "Outdoor workers should take frequent breaks in shade, drink water, and use protective equipment (masks, sunscreen) as relevant."

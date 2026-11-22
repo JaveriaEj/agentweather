@@ -1,0 +1,9 @@
+variable,lower,upper,n_outliers,pct
+aqi,-47.0,184.0,0,0.0
+temp_c,14.8,41.4,0,0.0
+precip_mm,0.0,0.0,149,6.892
+humidity_pct,-32.0,171.0,0,0.0
+uvi,-9.6,12.8,0,0.0
+wind_speed,-2.76,8.37,0,0.0
+pm2_5,-43.16,80.197,19,0.967
+pressure_hpa,985.7,1036.8,0,0.0

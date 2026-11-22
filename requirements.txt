@@ -1,0 +1,18 @@
+# Full environment: training, agents, tests. Python 3.11 recommended (Hopsworks client).
+# CPU-only PyTorch wheels (much smaller/faster to install on GitHub Actions)
+--extra-index-url https://download.pytorch.org/whl/cpu
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+scipy>=1.11
+statsmodels>=0.14
+torch>=2.3
+joblib>=1.3
+requests>=2.31
+pyyaml>=6.0
+python-dotenv>=1.0
+langgraph>=0.2
+shap>=0.45
+matplotlib>=3.8
+hopsworks[python]>=4.2
+# After your first successful run, lock exact versions with:  pip freeze > requirements.lock

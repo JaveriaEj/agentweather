@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------
+# Project settings. Change the city here (name + coordinates).
+# Secrets (API keys) are NOT stored here - see .env.example.
+# ---------------------------------------------------------------
+city:
+  name: Karachi
+  country: PK
+  lat: 24.8607
+  lon: 67.0011
+  timezone: Asia/Karachi
+
+forecast:
+  horizon_hours: 24          # predict t+1 ... t+24
+  # Variables the models predict. Wind is predicted as u/v components
+  # and converted back to speed + direction afterwards.
+  target_vars: [aqi, temp_c, precip_mm, humidity_pct, uvi, wind_u, wind_v]
+  rain_threshold_mm: 0.1     # "it rained" if precip_mm > this (for rain probability)
+
+features:
+  base_vars: [temp_c, humidity_pct, pressure_hpa, dew_point_c, clouds_pct,
+              precip_mm, uvi, wind_u, wind_v, wind_speed, aqi, pm2_5, pm10, o3, no2]
+  lags: [1, 2, 3, 6, 12, 24]
+  rolling_windows: [3, 6, 24]
+  diffs: [1, 3, 24]
+  min_history_hours: 48      # hours of history needed to compute a full feature row
+
+imputation:
+  ffill_limit_hours: 3       # forward-fill gaps up to this length; longer gaps stay NaN
+
+training:
+  validation_fraction: 0.2   # last 20% of time = validation
+  gap_hours: 24              # gap between train and validation (prevents target overlap)
+  eval_origin_step: 3        # evaluate every 3rd hour as a forecast origin (speed)
+  random_seed: 42
+  min_improvement_pct: 0.5  # candidate must beat production RMSE by > 0.5% to replace it
+  ridge_alpha: 1.0
+  rf_n_estimators: 150
+  rf_max_depth: 12
+  sarimax:
+    order: [1, 0, 1]
+    fourier_k: 3             # daily seasonality via sin/cos terms
+    fit_window_hours: 720    # last 30 days used to fit
+  lstm:
+    window_hours: 48
+    hidden_size: 64
+    epochs: 40
+    batch_size: 64
+    learning_rate: 0.001
+    patience: 6
+
+registry:
+  model_name: weather_aqi_bundle
+
+drift:
+  psi_threshold: 0.25        # PSI > 0.25 = significant data drift
+  psi_window_hours: 168      # compare the last 7 days with training data
+  min_live_rows: 48
+  model_error_ratio_threshold: 1.5   # live RMSE > 1.5x validation RMSE = model drift
+  model_drift_window_hours: 72
+  min_error_samples: 24
+  retrain_cooldown_hours: 12
+  monitored_features: [temp_c, humidity_pct, pressure_hpa, aqi, pm2_5, wind_speed, uvi, precip_mm]
+
+report:
+  daily_report_hour_local: 7   # first run at/after 07:00 local time writes the daily report
+
+llm:
+  provider: groq
+  base_url: https://api.groq.com/openai/v1/chat/completions
+  model: llama-3.3-70b-versatile   # override with GROQ_MODEL env var
+  timeout_s: 30
+  max_retries: 2
+  temperature: 0.3
+
+api:
+  timeout_s: 20
+  max_retries: 4
+  backoff_base_s: 2
+
+  data_sources:
+  # Weather for history AND live data. "openmeteo" = free, no key (default).
+  # "openweather" = One Call 3.0 (needs the "One Call by Call" subscription).
+  weather: openmeteo

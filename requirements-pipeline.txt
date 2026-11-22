@@ -1,0 +1,7 @@
+# Light environment for the hourly feature pipeline and the backfill
+pandas>=2.2
+numpy>=1.26
+requests>=2.31
+pyyaml>=6.0
+python-dotenv>=1.0
+hopsworks[python]>=4.2

@@ -2,6 +2,19 @@
 
 *10Pearls SHINE Internship, Cohort 10*
 
+| | |
+|---|---|
+| 🌐 **Live dashboard** | https://agentweather-njoqe99sukww4sdvkzhapf.streamlit.app |
+| 📄 **Project report** | [`docs/PROJECT_REPORT.md`](docs/PROJECT_REPORT.md) |
+| ⚙️ **Automation** | [GitHub Actions](../../actions): data hourly → agents after every ingestion → training daily + on drift |
+
+> **Deviations from the brief (explained in the report):**
+> * **Feature store / Model Registry:** Hugging Face Hub instead of Hopsworks — our Hopsworks
+>   account could not create a project ("Project limit reached"). A Hopsworks backend is also
+>   implemented (`STORE_BACKEND=hopsworks`).
+> * **Weather data:** Open-Meteo instead of OpenWeather weather history, which requires a paid
+>   subscription. OpenWeather (air pollution) and AQICN (station AQI) are still used.
+
 An automated, serverless forecasting system for **one city** (default: Karachi; change it in
 `config/settings.yaml`). It forecasts six metric groups **hourly for the next 24 hours**, using free or free-tier services:
 
@@ -37,7 +50,7 @@ An automated, serverless forecasting system for **one city** (default: Karachi; 
 ## 1. Architecture
 
 ```
-OpenWeather ─┐   AQICN ─┐
+Open-Meteo + OpenWeather ─┐   AQICN ─┐
              ▼          ▼
 GitHub Action (hourly) ── scripts/run_feature_pipeline.py
   fetch (retry/backoff/fallback) → validate → fuse 1 row/hour → impute → features/targets
@@ -100,7 +113,8 @@ reports/eda/       generated EDA charts + findings
 
 | Service | Used for | How to get it |
 |---|---|---|
-| OpenWeather | live weather, weather history, air pollution | Sign up → subscribe to **One Call by Call** (card required, 1,000 calls/day free). **Set the daily limit to 1,000** in *Billing plans* so you are never charged. |
+| Open-Meteo | weather history + live weather (incl. UV) | nothing to do — free, no key |
+| OpenWeather | air pollution (history + live); fallback live weather | free key at https://home.openweathermap.org/api_keys (the paid One Call plan is **not** needed) |
 | AQICN | live station AQI | https://aqicn.org/data-platform/token |
 | Hugging Face | Feature store (dataset repo) + Model Registry (model repo) | https://huggingface.co/join → *Settings → Access Tokens* → new token with **Write** permission. The two private repos are created automatically on the first run. |
 | Groq | LLM for alerts/reports | https://console.groq.com → API keys |
@@ -164,8 +178,9 @@ without repository activity — the gap-repair step re-fetches missed hours.
 ## 7. Design decisions (documentation)
 
 ### Data sources and their limits
-* **Weather:** OpenWeather One Call 3.0 (current + time machine). Fallback for live data: free
-  `/data/2.5/weather` (no UV → imputed).
+* **Weather:** Open-Meteo (history + live, includes UV; free, no key). Fallback for live data:
+  OpenWeather current weather. Optional: `data_sources.weather: openweather` in `config/settings.yaml`
+  uses OpenWeather One Call 3.0 instead (needs the paid "One Call by Call" plan).
 * **Air quality:** OpenWeather Air Pollution (current + hourly history) gives pollutant
   concentrations; **AQICN** gives the live station AQI.
 * **Limitation:** AQICN has no free hourly history API, so historical AQI is *computed* (US EPA

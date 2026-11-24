@@ -61,6 +61,8 @@ def empty(msg: str):
 
 
 def aqi_cat(v):
+    if v is None or pd.isna(v):
+        return "no data"
     for lim, name in [(50, "Good"), (100, "Moderate"), (150, "Unhealthy (SG)"), (200, "Unhealthy"),
                       (300, "Very Unhealthy")]:
         if v <= lim:
@@ -94,7 +96,8 @@ with tabs[0]:
         c = st.columns(6)
         c[0].metric("Temperature", f"{last['temp_c']:.1f} °C")
         c[1].metric("Humidity", f"{last['humidity_pct']:.0f} %")
-        c[2].metric("AQI (US EPA)", f"{last['aqi']:.0f}", aqi_cat(last["aqi"]), delta_color="off")
+        c[2].metric("AQI (US EPA)", "n/a" if pd.isna(last["aqi"]) else f"{last['aqi']:.0f}",
+                    aqi_cat(last["aqi"]), delta_color="off")
         aq = last.get("aqi_aqicn")
         c[3].metric("AQICN station AQI", "n/a" if pd.isna(aq) or aq == "" else f"{float(aq):.0f}")
         c[4].metric("Wind", f"{last['wind_speed']:.1f} m/s")
@@ -298,7 +301,9 @@ with tabs[6]:
         events = dl[(dl["drifted"] == 1) & (dl["drift_type"].isin(["data", "model"]))]
         c = st.columns(3)
         c[0].metric("Drift events (30 d)", len(events))
-        c[1].metric("Retraining triggered", int((dl["action"] == "retraining_triggered").sum()))
+        # one "trigger" row per retraining request (the per-metric rows only say which checks drifted)
+        trig = dl[(dl["drift_type"] == "trigger") & (dl["action"] == "retraining_triggered")]
+        c[1].metric("Retraining triggered", len(trig))
         c[2].metric("Retraining completed", int((dl["action"] == "retraining_completed").sum()))
         for kind in ["data", "model"]:
             sub = dl[dl["drift_type"] == kind]
